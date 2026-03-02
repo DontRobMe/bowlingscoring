@@ -23,7 +23,7 @@ def rolls_of(pins: int, count: int) -> list[int]:
 # =============================================================================
 
 
-class TestScoreboardStructure:
+class TestScoreboardAsciiStructure:
     def test_returns_string(self):
         assert isinstance(get_scoreboard([0] * 20), str)
 
@@ -47,7 +47,7 @@ class TestScoreboardStructure:
             get_scoreboard([-1] + [0] * 19)
 
 
-class TestScoreboardSymbols:
+class TestScoreboardFrameSymbols:
     def test_strike_shows_X(self):
         assert "X" in get_scoreboard([10] * 12)
 
@@ -73,7 +73,7 @@ class TestScoreboardSymbols:
         assert "/" not in get_scoreboard([0] * 20)
 
 
-class TestScoreboardScores:
+class TestScoreboardCumulativeDisplay:
     def test_perfect_game_shows_300(self):
         assert "300" in get_scoreboard([10] * 12)
 
@@ -98,7 +98,7 @@ class TestScoreboardScores:
         assert "28" in result
 
 
-class TestScoreboardWithFiveFrameRules:
+class TestScoreboardFiveFrameLayout:
     def test_variant_name_in_output(self):
         assert "5-Frame" in get_scoreboard([0] * 10, rules=FiveFrameRules)
 
@@ -117,7 +117,7 @@ class TestScoreboardWithFiveFrameRules:
         assert len(get_scoreboard([0] * 10, rules=FiveFrameRules).split("\n")) == 8
 
 
-class TestScoreboardWithNinePinRules:
+class TestScoreboardNinePinLayout:
     def test_variant_name_in_output(self):
         assert "9-Pin" in get_scoreboard([0] * 18, rules=NinePinRules)
 
@@ -136,7 +136,7 @@ class TestScoreboardWithNinePinRules:
         assert len(get_scoreboard([0] * 18, rules=NinePinRules).split("\n")) == 8
 
 
-class TestScoreboardWithNoBonus:
+class TestScoreboardNoBonusDisplay:
     def test_variant_name_in_output(self):
         assert "No-Bonus" in get_scoreboard([0] * 20, rules=NoBonus)
 
@@ -153,7 +153,7 @@ class TestScoreboardWithNoBonus:
         assert "X" in get_scoreboard([10] + rolls_of(0, 18), rules=NoBonus)
 
 
-class TestScoreboardWithDoubleSpareRules:
+class TestScoreboardDoubleSpareDisplay:
     def test_variant_name_in_output(self):
         assert "Double-Spare" in get_scoreboard([0] * 20, rules=DoubleSpareRules)
 
@@ -164,7 +164,7 @@ class TestScoreboardWithDoubleSpareRules:
         assert "/" in get_scoreboard([5, 5] * 10 + [5], rules=DoubleSpareRules)
 
 
-class TestScoreboardWithCustomRules:
+class TestScoreboardCustomRuleSetLayout:
     def test_custom_variant_name_in_output(self):
         custom = RuleSet(name="MaVariante", max_pins=10, max_frames=3, tenth_frame_extra=False)
         assert "MaVariante" in get_scoreboard([3, 4, 2, 5, 1, 6], rules=custom)

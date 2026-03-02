@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Callable, Tuple
+from .errors import Errors
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +69,10 @@ class RuleSet:
         open_rule: Rule = open_frame_rule,
         tenth_frame_extra: bool = True,
     ) -> None:
+        if max_pins < 1:
+            raise ValueError(Errors.RULESET_MAX_PINS)
+        if max_frames < 1:
+            raise ValueError(Errors.RULESET_MAX_FRAMES)
         self.name = name
         self.max_pins = max_pins
         self.max_frames = max_frames

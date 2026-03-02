@@ -1,5 +1,6 @@
 from .scoring import BowlingError, calculate_bowling_score
 from .scoreboard import get_scoreboard
+from .errors import Errors
 from .rules import (
     Rule,
     RuleSet,
@@ -20,6 +21,7 @@ __all__ = [
     "calculate_bowling_score",
     "get_scoreboard",
     "BowlingError",
+    "Errors",
     "Rule",
     "RuleSet",
     "strike_bonus_rule",

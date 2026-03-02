@@ -1,6 +1,7 @@
 import pytest
 from bowling import (
     BowlingError,
+    Errors,
     RuleSet,
     calculate_bowling_score,
     get_scoreboard,
@@ -11,13 +12,10 @@ from bowling import (
     DoubleSpareRules,
 )
 from bowling.rules import (
-    strike_bonus_rule,
     strike_no_bonus_rule,
-    spare_bonus_rule,
-    spare_double_bonus_rule,
     spare_no_bonus_rule,
-    open_frame_rule,
 )
+from bowling.scoring import _score_frame
 
 
 def rolls_of(pins: int, count: int) -> list[int]:
@@ -26,11 +24,10 @@ def rolls_of(pins: int, count: int) -> list[int]:
 
 # =============================================================================
 # TESTS UNITAIRES
-# Chaque test cible une seule fonction, un seul comportement.
 # =============================================================================
 
 
-class TestOpenFrame:
+class TestOpenFrameScore:
     def test_single_open_frame(self):
         assert calculate_bowling_score([3, 6] + rolls_of(0, 18)) == 9
 
@@ -48,7 +45,7 @@ class TestOpenFrame:
         assert calculate_bowling_score(rolls) == sum(rolls)
 
 
-class TestSpare:
+class TestSpareScore:
     def test_spare_followed_by_7(self):
         assert calculate_bowling_score([5, 5, 7, 0] + rolls_of(0, 16)) == 24
 
@@ -65,7 +62,7 @@ class TestSpare:
         assert calculate_bowling_score([4, 6, 0, 0] + rolls_of(0, 16)) == 10
 
 
-class TestStrike:
+class TestStrikeScore:
     def test_strike_followed_by_4_and_5(self):
         assert calculate_bowling_score([10, 4, 5] + rolls_of(0, 16)) == 28
 
@@ -85,7 +82,7 @@ class TestStrike:
         assert calculate_bowling_score([10, 5, 5, 0, 0] + rolls_of(0, 14)) == 30
 
 
-class TestTenthFrame:
+class TestTenthFrameScore:
     def test_open_tenth(self):
         assert calculate_bowling_score(rolls_of(0, 18) + [3, 4]) == 7
 
@@ -105,7 +102,7 @@ class TestTenthFrame:
         assert calculate_bowling_score(rolls_of(0, 18) + [10, 5, 5]) == 20
 
 
-class TestFullGames:
+class TestFullGameScore:
     def test_perfect_game(self):
         assert calculate_bowling_score([10] * 12) == 300
 
@@ -120,6 +117,28 @@ class TestFullGames:
 
     def test_all_ones(self):
         assert calculate_bowling_score([1] * 20) == 20
+
+
+class TestScoreFramePure:
+    def test_strike_returns_bonus(self):
+        score, consumed = _score_frame([10, 3, 4], 0, 0, StandardRules)
+        assert score == 17
+        assert consumed == 1
+
+    def test_spare_returns_bonus(self):
+        score, consumed = _score_frame([5, 5, 7], 0, 0, StandardRules)
+        assert score == 17
+        assert consumed == 2
+
+    def test_open_frame_returns_sum(self):
+        score, consumed = _score_frame([3, 6], 0, 0, StandardRules)
+        assert score == 9
+        assert consumed == 2
+
+    def test_gutter_frame(self):
+        score, consumed = _score_frame([0, 0], 0, 0, StandardRules)
+        assert score == 0
+        assert consumed == 2
 
 
 class TestValidationOutOfRange:
@@ -178,7 +197,7 @@ class TestValidationTypes:
             calculate_bowling_score(["X"] + rolls_of(0, 19))  # type: ignore[list-item]
 
 
-class TestValidationSequence:
+class TestValidationSequenceLength:
     def test_empty_list(self):
         with pytest.raises(BowlingError):
             calculate_bowling_score([])
@@ -196,7 +215,7 @@ class TestValidationSequence:
             calculate_bowling_score([3])
 
 
-class TestValidationTenthFrame:
+class TestValidationTenthFrameBonus:
     def test_spare_without_bonus(self):
         with pytest.raises(BowlingError, match="spare requires one additional"):
             calculate_bowling_score(rolls_of(0, 18) + [5, 5])
@@ -218,7 +237,21 @@ class TestValidationTenthFrame:
             calculate_bowling_score(rolls_of(0, 18) + [6, 5])
 
 
-class TestRulesStandard:
+class TestValidationRulesetConstructor:
+    def test_max_pins_zero_rejected(self):
+        with pytest.raises(ValueError, match="max_pins"):
+            RuleSet(name="X", max_pins=0, max_frames=5)
+
+    def test_max_frames_zero_rejected(self):
+        with pytest.raises(ValueError, match="max_frames"):
+            RuleSet(name="X", max_pins=10, max_frames=0)
+
+    def test_negative_max_pins_rejected(self):
+        with pytest.raises(ValueError, match="max_pins"):
+            RuleSet(name="X", max_pins=-1, max_frames=5)
+
+
+class TestStandardRuleScore:
     def test_default_equals_explicit(self):
         rolls = [10] * 12
         assert calculate_bowling_score(rolls) == calculate_bowling_score(rolls, rules=StandardRules)
@@ -236,7 +269,7 @@ class TestRulesStandard:
         assert calculate_bowling_score([10, 9, 1, 5, 5, 7, 2, 10, 10, 10, 9, 0, 8, 2, 9, 1, 10], rules=StandardRules) == 187
 
 
-class TestRulesFiveFrame:
+class TestFiveFrameRuleScore:
     def test_perfect_game(self):
         assert calculate_bowling_score([10] * 7, rules=FiveFrameRules) == 150
 
@@ -253,7 +286,7 @@ class TestRulesFiveFrame:
         assert calculate_bowling_score([10, 4, 5] + rolls_of(0, 6), rules=FiveFrameRules) == 28
 
 
-class TestRulesNinePin:
+class TestNinePinStrikeBonus:
     def test_open_frames(self):
         assert calculate_bowling_score([4, 4] * 9, rules=NinePinRules) == 72
 
@@ -264,8 +297,7 @@ class TestRulesNinePin:
         assert calculate_bowling_score([1] * 18, rules=NinePinRules) == 18
 
     def test_strike_score(self):
-        rolls = [9, 4, 4] + rolls_of(0, 14)
-        assert calculate_bowling_score(rolls, rules=NinePinRules) == 26
+        assert calculate_bowling_score([9, 4, 4] + rolls_of(0, 14), rules=NinePinRules) == 26
 
     def test_roll_of_10_rejected(self):
         with pytest.raises(BowlingError, match="out of range"):
@@ -275,7 +307,7 @@ class TestRulesNinePin:
         assert calculate_bowling_score([9] + rolls_of(0, 16), rules=NinePinRules) >= 9
 
 
-class TestRulesNoBonus:
+class TestNoBonusRuleScore:
     def test_strike_counts_as_pins_only(self):
         assert calculate_bowling_score([10] + rolls_of(0, 18), rules=NoBonus) == 10
 
@@ -292,7 +324,7 @@ class TestRulesNoBonus:
         assert calculate_bowling_score([3, 4] + rolls_of(0, 18), rules=NoBonus) == 7
 
 
-class TestRulesDoubleSpare:
+class TestDoubleSpareRuleScore:
     def test_bonus_is_doubled(self):
         rolls = [5, 5, 7, 0] + rolls_of(0, 16)
         assert calculate_bowling_score(rolls, rules=DoubleSpareRules) == calculate_bowling_score(rolls, rules=StandardRules) + 7
@@ -310,7 +342,7 @@ class TestRulesDoubleSpare:
         assert calculate_bowling_score(rolls, rules=DoubleSpareRules) == calculate_bowling_score(rolls, rules=StandardRules)
 
 
-class TestRulesCustom:
+class TestCustomRuleSetScore:
     def test_3_frames_no_bonus(self):
         custom = RuleSet(
             name="T", max_pins=10, max_frames=3,
